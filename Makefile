@@ -4,8 +4,8 @@ build:
 
 .PHONY: clean
 clean:
-	rm -rf ./bin ./vendor Gopkg.lock
+	rm -rf ./bin/*
 
 .PHONY: deploy
 deploy: clean build
-	sls deploy --verbose --aws-profile chattabot
+	echo 'No target yet'
