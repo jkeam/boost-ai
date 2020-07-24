@@ -12,6 +12,7 @@ type Client struct {
 	BaseURL string
 }
 
+// Response response of http call
 type Response struct {
 	Status string
 	Body   string
@@ -21,7 +22,7 @@ type Response struct {
 // NewClient - Constructor for Boost AI Client
 func NewClient(baseURL string) *Client {
 	return &Client{
-		baseURL: baseURL,
+		BaseURL: baseURL,
 	}
 }
 
@@ -51,7 +52,7 @@ func (client *Client) post(path string, data []byte) *Response {
 	// log.Debug(fmt.Sprintf("Base url: %s", baseURL))
 	return &Response{
 		Status: resp.Status,
-		body:   string(body),
+		Body:   string(body),
 		Header: resp.Header,
 	}
 }
