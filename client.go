@@ -60,6 +60,15 @@ func (client *Client) StartConversation() (*MessageResponse, error) {
 	return client.sendCommand(`{"command":"START", "clean": true}`)
 }
 
+// StartConversation - start the conversation, passing in the filter values
+func (client *Client) StartConversationWithFilters(filterValues []string) (*MessageResponse, error) {
+	filters, marshalErr := json.Marshal(filterValues)
+	if marshalErr != nil {
+		return client.StartConversation()
+	}
+	return client.sendCommand(fmt.Sprintf(`{"command":"START", "clean": true, "filter_values": %s}`, string(filters)))
+}
+
 // SendMessage - Send message to the bot
 func (client *Client) SendMessage(message string, conversationID string) (*MessageResponse, error) {
 	data := fmt.Sprintf(`{"command":"POST", "clean": true, "type": "text", "conversation_id": "%s", "value": "%s"}`, conversationID, message)
