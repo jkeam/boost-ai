@@ -60,7 +60,7 @@ func (client *Client) StartConversation() (*MessageResponse, error) {
 	return client.sendCommand(`{"command":"START", "clean": true}`)
 }
 
-// StartConversation - start the conversation, passing in the filter values
+// StartConversationWithFilters - start the conversation, passing in the filter values
 func (client *Client) StartConversationWithFilters(filterValues []string) (*MessageResponse, error) {
 	filters, marshalErr := json.Marshal(filterValues)
 	if marshalErr != nil {
