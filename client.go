@@ -113,12 +113,12 @@ type customMessagePayload struct {
 }
 
 type postMessage struct {
-	Command              string               `json:"command"`
-	Clean                bool                 `json:"clean"`
-	Type                 string               `json:"type"`
-	ConversationID       string               `json:"conversation_id"`
-	Value                string               `json:"value"`
-	CustomMessagePayload customMessagePayload `json:"custom_payload"`
+	Command              string                `json:"command"`
+	Clean                bool                  `json:"clean"`
+	Type                 string                `json:"type"`
+	ConversationID       string                `json:"conversation_id"`
+	Value                string                `json:"value"`
+	CustomMessagePayload *customMessagePayload `json:"custom_payload"`
 }
 
 func (client *Client) sendCommand(data string) (*MessageResponse, error) {
