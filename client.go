@@ -77,7 +77,7 @@ func (client *Client) SendMessageFromPhone(
 	fromPhone string,
 ) (*MessageResponse, error) {
 
-	message := &postMessage{
+	postMessage := &postMessage{
 		Command:              "POST",
 		Clean:                true,
 		Type:                 "text",
@@ -85,11 +85,11 @@ func (client *Client) SendMessageFromPhone(
 		Value:                message,
 		CustomMessagePayload: &customMessagePayload{ClientPhone: fromPhone},
 	}
-	data, err := json.Marshal(message)
+	data, err := json.Marshal(postMessage)
 	if err != nil {
 		return nil, err
 	}
-	return client.sendCommand(data)
+	return client.sendCommand(string(data))
 }
 
 // Private
