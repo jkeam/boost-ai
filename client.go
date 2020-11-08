@@ -22,11 +22,6 @@ type Response struct {
 	Header http.Header
 }
 
-// Message - a message in a conversation
-type Message struct {
-	ConversationID string
-}
-
 // MessageResponse response of a message call
 type MessageResponse struct {
 	Conversation conversation `json:"conversation"`
@@ -75,6 +70,28 @@ func (client *Client) SendMessage(message string, conversationID string) (*Messa
 	return client.sendCommand(data)
 }
 
+// SendMessageFromPhone - Send message to the bot
+func (client *Client) SendMessageFromPhone(
+	message string,
+	conversationID string,
+	fromPhone string,
+) (*MessageResponse, error) {
+
+	message := &postMessage{
+		Command:              "POST",
+		Clean:                true,
+		Type:                 "text",
+		ConversationID:       conversationID,
+		Value:                message,
+		CustomMessagePayload: &customMessagePayload{ClientPhone: fromPhone},
+	}
+	data, err := json.Marshal(message)
+	if err != nil {
+		return nil, err
+	}
+	return client.sendCommand(data)
+}
+
 // Private
 
 type conversation struct {
@@ -89,6 +106,19 @@ type element struct {
 type response struct {
 	AvatarURL string    `json:"avatar_url"`
 	Elements  []element `json:"elements"`
+}
+
+type customMessagePayload struct {
+	ClientPhone string `json:"client_phone"`
+}
+
+type postMessage struct {
+	Command              string               `json:"command"`
+	Clean                bool                 `json:"clean"`
+	Type                 string               `json:"type"`
+	ConversationID       string               `json:"conversation_id"`
+	Value                string               `json:"value"`
+	CustomMessagePayload customMessagePayload `json:"custom_payload"`
 }
 
 func (client *Client) sendCommand(data string) (*MessageResponse, error) {
