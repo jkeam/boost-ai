@@ -52,22 +52,33 @@ func (messageResponse *MessageResponse) GetMessageText() string {
 
 // StartConversation - start the conversation
 func (client *Client) StartConversation() (*MessageResponse, error) {
-	return client.sendCommand(`{"command":"START", "clean": true}`)
+	startCommand := newStartCommand()
+	data, err := json.Marshal(startCommand)
+	if err != nil {
+		return nil, err
+	}
+	return client.sendCommand(string(data))
 }
 
 // StartConversationWithFilters - start the conversation, passing in the filter values
 func (client *Client) StartConversationWithFilters(filterValues []string) (*MessageResponse, error) {
-	filters, marshalErr := json.Marshal(filterValues)
-	if marshalErr != nil {
-		return client.StartConversation()
+	startMessage := newStartCommand()
+	startMessage.FilterValues = filterValues
+	data, err := json.Marshal(startMessage)
+	if err != nil {
+		return nil, err
 	}
-	return client.sendCommand(fmt.Sprintf(`{"command":"START", "clean": true, "filter_values": %s}`, string(filters)))
+	return client.sendCommand(string(data))
 }
 
 // SendMessage - Send message to the bot
 func (client *Client) SendMessage(message string, conversationID string) (*MessageResponse, error) {
-	data := fmt.Sprintf(`{"command":"POST", "clean": true, "type": "text", "conversation_id": "%s", "value": "%s"}`, conversationID, message)
-	return client.sendCommand(data)
+	postMessage := newPostCommand(message, conversationID)
+	data, err := json.Marshal(postMessage)
+	if err != nil {
+		return nil, err
+	}
+	return client.sendCommand(string(data))
 }
 
 // SendMessageFromPhone - Send message to the bot
@@ -76,15 +87,8 @@ func (client *Client) SendMessageFromPhone(
 	conversationID string,
 	fromPhone string,
 ) (*MessageResponse, error) {
-
-	postMessage := &postMessage{
-		Command:              "POST",
-		Clean:                true,
-		Type:                 "text",
-		ConversationID:       conversationID,
-		Value:                message,
-		CustomMessagePayload: &customMessagePayload{ClientPhone: fromPhone},
-	}
+	postMessage := newPostCommand(message, conversationID)
+	postMessage.CustomMessagePayload = &customMessagePayload{ClientPhone: fromPhone}
 	data, err := json.Marshal(postMessage)
 	if err != nil {
 		return nil, err
@@ -97,12 +101,15 @@ func (client *Client) SendMessageFromPhone(
 type conversation struct {
 	ID string `json:"id"`
 }
+
 type payloadElement struct {
 	Text string `json:"text"`
 }
+
 type element struct {
-	Payload payloadElement `json:"payload"`
+	Payload *payloadElement `json:"payload"`
 }
+
 type response struct {
 	AvatarURL string    `json:"avatar_url"`
 	Elements  []element `json:"elements"`
@@ -112,13 +119,36 @@ type customMessagePayload struct {
 	ClientPhone string `json:"client_phone"`
 }
 
-type postMessage struct {
+type postCommand struct {
 	Command              string                `json:"command"`
 	Clean                bool                  `json:"clean"`
 	Type                 string                `json:"type"`
 	ConversationID       string                `json:"conversation_id"`
 	Value                string                `json:"value"`
-	CustomMessagePayload *customMessagePayload `json:"custom_payload"`
+	CustomMessagePayload *customMessagePayload `json:"custom_payload,omitempty"`
+}
+
+type startCommand struct {
+	Command      string   `json:"command"`
+	Clean        bool     `json:"clean"`
+	FilterValues []string `json:"filter_values,omitempty"`
+}
+
+func newStartCommand() *startCommand {
+	return &startCommand{
+		Command: "Start",
+		Clean:   true,
+	}
+}
+
+func newPostCommand(message string, conversationID string) *postCommand {
+	return &postCommand{
+		Command:        "POST",
+		Clean:          true,
+		Type:           "text",
+		ConversationID: conversationID,
+		Value:          message,
+	}
 }
 
 func (client *Client) sendCommand(data string) (*MessageResponse, error) {
