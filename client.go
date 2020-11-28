@@ -58,7 +58,7 @@ func (client *Client) StartConversation() (*MessageResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	return client.sendCommand(string(data))
+	return client.sendCommand(data)
 }
 
 // StartConversationWithFilters - start the conversation, passing in the filter values
@@ -69,7 +69,7 @@ func (client *Client) StartConversationWithFilters(filterValues []string) (*Mess
 	if err != nil {
 		return nil, err
 	}
-	return client.sendCommand(string(data))
+	return client.sendCommand(data)
 }
 
 // SendMessage - Send message to the bot
@@ -79,7 +79,7 @@ func (client *Client) SendMessage(message string, conversationID string) (*Messa
 	if err != nil {
 		return nil, err
 	}
-	return client.sendCommand(string(data))
+	return client.sendCommand(data)
 }
 
 // SendMessageFromPhone - Send message to the bot
@@ -94,10 +94,17 @@ func (client *Client) SendMessageFromPhone(
 	if err != nil {
 		return nil, err
 	}
-	return client.sendCommand(string(data))
+	return client.sendCommand(data)
 }
 
 // Private
+
+const startCommandToken = "START"
+const postCommandToken = "POST"
+const typeTextToken = "text"
+const apiPath = "/api/chat/v2"
+const contentTypeKey = "Content-Type"
+const jsonContentType = "application/json"
 
 type conversation struct {
 	ID string `json:"id"`
@@ -137,35 +144,26 @@ type startCommand struct {
 
 func newStartCommand() *startCommand {
 	return &startCommand{
-		Command: "START",
+		Command: startCommandToken,
 		Clean:   true,
 	}
 }
 
 func newPostCommand(message string, conversationID string) *postCommand {
 	return &postCommand{
-		Command:        "POST",
+		Command:        postCommandToken,
 		Clean:          true,
-		Type:           "text",
+		Type:           typeTextToken,
 		ConversationID: conversationID,
 		Value:          message,
 	}
 }
 
-func (client *Client) sendCommand(data string) (*MessageResponse, error) {
-	response, postError := client.post("/api/chat/v2", []byte(data))
-	if postError != nil {
-		return nil, postError
-	}
-
-	return response, nil
-}
-
-func (client *Client) post(path string, data []byte) (*MessageResponse, error) {
-	url := fmt.Sprintf("%s%s", client.BaseURL, path)
+func (client *Client) sendCommand(data []byte) (*MessageResponse, error) {
+	url := fmt.Sprintf("%s%s", client.BaseURL, apiPath)
 
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(contentTypeKey, jsonContentType)
 
 	httpClient := &http.Client{Timeout: time.Duration(client.TimeoutSeconds) * time.Second}
 	resp, err := httpClient.Do(req)
