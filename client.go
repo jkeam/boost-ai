@@ -12,7 +12,8 @@ import (
 
 // Client to communicate with Boost AI
 type Client struct {
-	BaseURL string
+	BaseURL        string
+	TimeoutSeconds int
 }
 
 // Response response of http call
@@ -31,7 +32,8 @@ type MessageResponse struct {
 // NewClient - Constructor for Boost AI Client
 func NewClient(baseURL string) *Client {
 	return &Client{
-		BaseURL: baseURL,
+		BaseURL:        baseURL,
+		TimeoutSeconds: 10,
 	}
 }
 
@@ -170,7 +172,7 @@ func (client *Client) post(path string, data []byte) *Response {
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
 	req.Header.Set("Content-Type", "application/json")
 
-	httpClient := &http.Client{Timeout: 10 * time.Second}
+	httpClient := &http.Client{Timeout: time.Duration(client.TimeoutSeconds) * time.Second}
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		panic(err)
