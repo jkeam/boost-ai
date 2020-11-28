@@ -1,6 +1,8 @@
 package boostai
 
 import (
+	"errors"
+	"net/http"
 	"testing"
 
 	"github.com/jarcoal/httpmock"
@@ -125,4 +127,38 @@ func TestSendMessageFromPhone(t *testing.T) {
 	assert.Equal(t, "http://avatar.com/person.png", messageResponse.Response.AvatarURL, "Should match avatar url")
 	assert.Equal(t, 1, len(messageResponse.Response.Elements), "Should be 1 element")
 	assert.Equal(t, "Hi there", messageResponse.Response.Elements[0].Payload.Text, "Should match element text")
+}
+
+func TestSendMessageFailParse(t *testing.T) {
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	client := NewClient("https://boost.ai")
+	httpmock.RegisterResponder("POST", "https://boost.ai/api/chat/v2", httpmock.NewStringResponder(200, ""))
+
+	_, err := client.SendMessage("Hi", "1")
+	if err == nil {
+		assert.Fail(t, "Should throw an error", err)
+	}
+
+	assert.Equal(t, 1, httpmock.GetTotalCallCount(), "Should only have been called once")
+}
+
+func TestSendMessageErrorDuringRequest(t *testing.T) {
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	client := NewClient("https://boost.ai")
+	httpmock.RegisterResponder("POST", "https://boost.ai/api/chat/v2",
+		func(req *http.Request) (*http.Response, error) {
+			return nil, errors.New("Request failure")
+		},
+	)
+
+	_, err := client.SendMessage("Hi", "1")
+	if err == nil {
+		assert.Fail(t, "Should throw an error", err)
+	}
+
+	assert.Equal(t, 1, httpmock.GetTotalCallCount(), "Should only have been called once")
 }

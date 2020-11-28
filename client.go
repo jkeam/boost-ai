@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -12,7 +11,8 @@ import (
 
 // Client to communicate with Boost AI
 type Client struct {
-	BaseURL string
+	BaseURL        string
+	TimeoutSeconds int
 }
 
 // Response response of http call
@@ -31,7 +31,8 @@ type MessageResponse struct {
 // NewClient - Constructor for Boost AI Client
 func NewClient(baseURL string) *Client {
 	return &Client{
-		BaseURL: baseURL,
+		BaseURL:        baseURL,
+		TimeoutSeconds: 10,
 	}
 }
 
@@ -57,7 +58,7 @@ func (client *Client) StartConversation() (*MessageResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	return client.sendCommand(string(data))
+	return client.sendCommand(data)
 }
 
 // StartConversationWithFilters - start the conversation, passing in the filter values
@@ -68,7 +69,7 @@ func (client *Client) StartConversationWithFilters(filterValues []string) (*Mess
 	if err != nil {
 		return nil, err
 	}
-	return client.sendCommand(string(data))
+	return client.sendCommand(data)
 }
 
 // SendMessage - Send message to the bot
@@ -78,7 +79,7 @@ func (client *Client) SendMessage(message string, conversationID string) (*Messa
 	if err != nil {
 		return nil, err
 	}
-	return client.sendCommand(string(data))
+	return client.sendCommand(data)
 }
 
 // SendMessageFromPhone - Send message to the bot
@@ -93,10 +94,17 @@ func (client *Client) SendMessageFromPhone(
 	if err != nil {
 		return nil, err
 	}
-	return client.sendCommand(string(data))
+	return client.sendCommand(data)
 }
 
 // Private
+
+const startCommandToken = "START"
+const postCommandToken = "POST"
+const typeTextToken = "text"
+const apiPath = "/api/chat/v2"
+const contentTypeKey = "Content-Type"
+const jsonContentType = "application/json"
 
 type conversation struct {
 	ID string `json:"id"`
@@ -136,51 +144,38 @@ type startCommand struct {
 
 func newStartCommand() *startCommand {
 	return &startCommand{
-		Command: "Start",
+		Command: startCommandToken,
 		Clean:   true,
 	}
 }
 
 func newPostCommand(message string, conversationID string) *postCommand {
 	return &postCommand{
-		Command:        "POST",
+		Command:        postCommandToken,
 		Clean:          true,
-		Type:           "text",
+		Type:           typeTextToken,
 		ConversationID: conversationID,
 		Value:          message,
 	}
 }
 
-func (client *Client) sendCommand(data string) (*MessageResponse, error) {
-	response := &MessageResponse{}
-	err := deserialize(client.post("/api/chat/v2", []byte(data)), response)
+func (client *Client) sendCommand(data []byte) (*MessageResponse, error) {
+	url := fmt.Sprintf("%s%s", client.BaseURL, apiPath)
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
+	req.Header.Set(contentTypeKey, jsonContentType)
+
+	httpClient := &http.Client{Timeout: time.Duration(client.TimeoutSeconds) * time.Second}
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	return response, nil
-}
-
-func deserialize(resp *Response, target interface{}) error {
-	return json.Unmarshal(resp.Body, target)
-}
-
-func (client *Client) post(path string, data []byte) *Response {
-	url := fmt.Sprintf("%s%s", client.BaseURL, path)
-
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
-	req.Header.Set("Content-Type", "application/json")
-
-	httpClient := &http.Client{Timeout: 10 * time.Second}
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		panic(err)
-	}
 	defer resp.Body.Close()
 
-	body, _ := ioutil.ReadAll(resp.Body)
-	return &Response{
-		Status: resp.Status,
-		Body:   body,
-		Header: resp.Header,
+	var response MessageResponse
+	readErr := json.NewDecoder(resp.Body).Decode(&response)
+	if readErr != nil {
+		return nil, readErr
 	}
+	return &response, nil
 }
