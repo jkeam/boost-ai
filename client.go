@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -138,7 +137,7 @@ type startCommand struct {
 
 func newStartCommand() *startCommand {
 	return &startCommand{
-		Command: "Start",
+		Command: "START",
 		Clean:   true,
 	}
 }
@@ -154,35 +153,31 @@ func newPostCommand(message string, conversationID string) *postCommand {
 }
 
 func (client *Client) sendCommand(data string) (*MessageResponse, error) {
-	response := &MessageResponse{}
-	err := deserialize(client.post("/api/chat/v2", []byte(data)), response)
-	if err != nil {
-		return nil, err
+	response, postError := client.post("/api/chat/v2", []byte(data))
+	if postError != nil {
+		return nil, postError
 	}
+
 	return response, nil
 }
 
-func deserialize(resp *Response, target interface{}) error {
-	return json.Unmarshal(resp.Body, target)
-}
-
-func (client *Client) post(path string, data []byte) *Response {
+func (client *Client) post(path string, data []byte) (*MessageResponse, error) {
 	url := fmt.Sprintf("%s%s", client.BaseURL, path)
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
 	req.Header.Set("Content-Type", "application/json")
 
 	httpClient := &http.Client{Timeout: time.Duration(client.TimeoutSeconds) * time.Second}
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	body, _ := ioutil.ReadAll(resp.Body)
-	return &Response{
-		Status: resp.Status,
-		Body:   body,
-		Header: resp.Header,
+	var response MessageResponse
+	readErr := json.NewDecoder(resp.Body).Decode(&response)
+	if readErr != nil {
+		return nil, readErr
 	}
+	return &response, nil
 }
